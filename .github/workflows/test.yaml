@@ -1,0 +1,71 @@
+name: Android Appium Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      APPIUM_SERVER_URL: http://localhost:4723/wd/hub
+      DEVICE_NAME: "Android Emulator"  # The name for the emulator
+      PLATFORM_NAME: "Android"
+      EMULATOR_API_LEVEL: 30           # Use a suitable Android API level
+      APP_PATH: "./shuttlers.apk"      # Path to your APK file in the repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'  # Choose the Python version
+
+      - name: Install Appium-Python-Client and other dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install Appium-Python-Client selenium
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Download Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          build-tools: 30.0.3
+          target: "default"
+
+      - name: Create and start Android emulator
+        run: |
+          echo "Setting up Android emulator..."
+          sudo $ANDROID_HOME/emulator/emulator -list-avds
+          echo "no" | avdmanager create avd -n test -k "system-images;android-${{ env.EMULATOR_API_LEVEL }};google_apis;x86_64" --force
+          $ANDROID_HOME/emulator/emulator -avd test -no-snapshot-save -no-audio -no-window &
+          adb wait-for-device
+          adb shell input keyevent 82
+
+      - name: Start Appium server
+        run: |
+          npm install -g appium
+          appium --log-level error --base-path /wd/hub &
+          sleep 10  # Wait for Appium to start
+
+      - name: Run tests
+        env:
+          DEVICE_UDID: $(adb devices | grep 'emulator' | awk '{print $1}')  # Get emulator UDID dynamically
+        run: |
+          # Modify `shuttlers1.py` to dynamically use DEVICE_UDID
+          sed -i "s/'udid': '.*'/'udid': '${DEVICE_UDID}'/" shuttlers1.py
+          python3 shuttlers1.py
+
+      - name: Stop Android emulator
+        run: adb -s ${{ env.DEVICE_UDID }} emu kill
