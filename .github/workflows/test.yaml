@@ -44,11 +44,11 @@ jobs:
           build-tools: 30.0.3
           target: "default"
 
-      - name: Create and start Android emulator
+      - name: Create and start Android emulator with ARM
         run: |
-          echo "Setting up Android emulator..."
-          sdkmanager --install "system-images;android-${{ env.EMULATOR_API_LEVEL }};google_apis;x86_64"  # Install system image
-          echo "no" | avdmanager create avd -n test -k "system-images;android-${{ env.EMULATOR_API_LEVEL }};google_apis;x86_64" --force
+          echo "Setting up ARM-based Android emulator..."
+          sdkmanager --install "system-images;android-${{ env.EMULATOR_API_LEVEL }};google_apis;arm64-v8a"  # Install ARM system image
+          echo "no" | avdmanager create avd -n test -k "system-images;android-${{ env.EMULATOR_API_LEVEL }};google_apis;arm64-v8a" --force
           $ANDROID_HOME/emulator/emulator -avd test -no-snapshot-save -no-audio -no-window &
           adb wait-for-device
           adb shell input keyevent 82  # Unlock screen
